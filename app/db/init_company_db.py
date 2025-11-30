@@ -1,0 +1,16 @@
+import os
+from app.db.base_class import Base
+from app.db.db_session import get_company_engine
+from app.models.company_db.site import Site
+from app.models.company_db.department import Department
+
+def create_company_database(company_id: int):
+    db_path = f"db/company_{company_id}.db"
+
+    if not os.path.exists("db"):
+        os.makedirs("db")
+
+    engine = get_company_engine(db_path)
+    Base.metadata.create_all(bind=engine)
+
+    return db_path

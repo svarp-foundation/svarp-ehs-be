@@ -1,0 +1,100 @@
+# -------------------------
+# Python Cache
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+
+# -------------------------
+# Virtual Environment
+# -------------------------
+venv/
+env/
+ENV/
+.venv/
+
+# -------------------------
+# SQLite Databases (Multi-Tenant)
+# -------------------------
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+
+# Keep the DB folder but ignore DB files
+!db/
+!db/.gitkeep
+
+# -------------------------
+# Environment Files
+# -------------------------
+.env
+*.env
+.env.*
+
+
+# -------------------------
+# IDE / Editors
+# -------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -------------------------
+# OS Files
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/
+*.out
+
+# -------------------------
+# Python Build Files
+# -------------------------
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# -------------------------
+# Testing
+# -------------------------
+.coverage
+coverage.xml
+.pytest_cache/
+
+# -------------------------
+# Uploads (user evidence/photos)
+# -------------------------
+uploads/
+evidence/
+images/
+photos/
+
+# -------------------------
+# Cache
+# -------------------------
+.cache/
+.mypy_cache/
+.pyre/
+.pytype/
+
+# -------------------------
+# Temporary files
+# -------------------------
+tmp/
+temp/
+*.tmp
+
+# -------------------------
+# Uvicorn reload artifacts
+# -------------------------
+*.pid
