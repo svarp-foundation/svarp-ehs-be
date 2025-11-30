@@ -9,6 +9,7 @@ from app.api.auth import router as auth_router   # if auth exists
 from app.api.site import router as site_router
 from app.api.department import router as department_router
 from app.api.audit import router as audit_router
+from app.api.finding import router as finding_router
 
 app = FastAPI(title="SVARP Backend")
 app.include_router(company_router)
@@ -18,6 +19,7 @@ app.include_router(auth_router)
 app.include_router(site_router)
 app.include_router(department_router)
 app.include_router(audit_router)
+app.include_router(finding_router)
 
 Base.metadata.create_all(bind=engine)
 
