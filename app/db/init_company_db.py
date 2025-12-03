@@ -7,7 +7,7 @@ from app.models.company_db.audit import Audit
 from app.models.company_db.audit_team import AuditTeam
 
 def create_company_database(company_id: int):
-    db_path = f"db/company_{company_id}.db"
+    db_path = f"tmp/ehs_db/company_{company_id}.db"
 
     if not os.path.exists("db"):
         os.makedirs("db")

@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-MASTER_DB_PATH = "db/master.db"
+MASTER_DB_PATH = "tmp/ehs_db/master.db"
 
 engine = create_engine(
     f"sqlite:///{MASTER_DB_PATH}",

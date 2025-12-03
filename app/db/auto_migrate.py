@@ -10,7 +10,7 @@ from app.models.company_db.audit_team import AuditTeam
 from app.models.company_db.finding import Finding
 
 def migrate_company_db(company_id: int):
-    db_path = f"db/company_{company_id}.db"
+    db_path = f"tmp/ehs_db/company_{company_id}.db"
 
     if not os.path.exists(db_path):
         print(f"[MIGRATION] DB {db_path} not found. Creating fresh DB.")

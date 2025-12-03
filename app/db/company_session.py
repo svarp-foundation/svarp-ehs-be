@@ -6,7 +6,7 @@ from fastapi import Depends
 
 def get_company_db(current_user=Depends(get_current_user)):
     company_id = current_user.company_id
-    db_path = f"db/company_{company_id}.db"
+    db_path = f"tmp/ehs_db/company_{company_id}.db"
 
     migrate_company_db(company_id)
     engine = get_company_engine(db_path)

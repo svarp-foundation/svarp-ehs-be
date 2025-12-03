@@ -19,13 +19,13 @@ ENV/
 # -------------------------
 # SQLite Databases (Multi-Tenant)
 # -------------------------
-db/*.db
-db/*.sqlite
-db/*.sqlite3
+tmp/ehs_db/*.db
+tmp/ehs_db/*.sqlite
+tmp/ehs_db/*.sqlite3
 
 # Keep the DB folder but ignore DB files
-!db/
-!db/.gitkeep
+!tmp/ehs_db/
+!tmp/ehs_db/.gitkeep
 
 # -------------------------
 # Environment Files
