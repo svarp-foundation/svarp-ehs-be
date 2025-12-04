@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.master import SessionLocal
 from app.models.user import User
+from app.models.company import Company
 from app.schemas.user import UserCreate
 from app.core.security import hash_password
 
@@ -17,6 +18,10 @@ def get_master_db():
 
 @router.post("/create")
 def create_user(user: UserCreate, db: Session = Depends(get_master_db)):
+    company = db.query(Company).filter(Company.id == user.company_id).first()
+    if not company:
+        raise HTTPException(status_code=400, detail="Company does not exist")
+
     existing = db.query(User).filter(User.email == user.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")

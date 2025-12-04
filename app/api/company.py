@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.master import SessionLocal
@@ -18,6 +18,16 @@ def get_master_db():
 
 @router.post("/create")
 def create_company(company: CompanyCreate, db: Session = Depends(get_master_db)):
+    name = company.name
+
+    if not name or name.strip() == "":
+        raise HTTPException(status_code=400, detail="Company name is required")
+
+    # 1️⃣ Check if company already exists
+    existing = db.query(Company).filter(Company.name.ilike(name)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Company already exists")
+
     new_company = Company(name=company.name)
     db.add(new_company)
     db.commit()
