@@ -12,8 +12,9 @@ class FindingCreate(BaseModel):
     severity: int = Field(..., ge=1, le=5)
     area: Optional[str] = None
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = {
+        "validate_by_name": True
+    }
 
 
 class FindingUpdate(BaseModel):
@@ -24,8 +25,9 @@ class FindingUpdate(BaseModel):
     severity: Optional[int] = Field(None, ge=1, le=5)
     area: Optional[str] = None
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = {
+        "validate_by_name": True
+    }
 
 
 class FindingOut(BaseModel):
@@ -41,5 +43,6 @@ class FindingOut(BaseModel):
     area: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
