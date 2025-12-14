@@ -48,6 +48,7 @@ def create_audit(data: AuditCreate, db: Session = Depends(get_company_db)):
     db.commit()
 
     return {"message": "Audit created successfully", "audit_id": audit.id}
+    
 @router.get("/list", response_model=List[AuditOut])
 def list_audits(db: Session = Depends(get_company_db)):
     rows = db.query(Audit).order_by(Audit.id.desc()).all()
