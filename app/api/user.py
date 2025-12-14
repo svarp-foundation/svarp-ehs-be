@@ -39,3 +39,21 @@ def create_user(user: UserCreate, db: Session = Depends(get_master_db)):
     db.refresh(new_user)
 
     return {"message": "User created", "user_id": new_user.id}
+
+
+@router.get("/list")
+def list_users(
+    role: str | None = None,
+    db: Session = Depends(get_master_db)
+):
+    q = db.query(User)
+    if role:
+        q = q.filter(User.role == role)
+    return q.all()
+
+@router.get("/auditors")
+def list_auditors(company_id: int, db: Session = Depends(get_master_db)):
+    return db.query(User)\
+        .filter(User.company_id == company_id)\
+        .filter(User.role == "auditor")\
+        .all()
