@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import delete
 from typing import Dict, List
@@ -11,8 +11,10 @@ from app.models.company_db.site import Site
 from app.models.company_db.finding import Finding
 from app.models.user import User
 from app.schemas.audit import AuditCreate, AuditOut, AuditUpdate
+from app.core.dependencies import get_current_user
+from app.core.permissions import require_admin
 
-router = APIRouter(prefix="/audit", tags=["Audit"])
+router = APIRouter(prefix="/audit", tags=["Audit"], dependencies=[Depends(get_current_user)])
 
 
 # -------------------- MASTER DB --------------------
@@ -26,10 +28,14 @@ def get_master_db():
 
 # -------------------- CREATE AUDIT --------------------
 @router.post("/create", response_model=Dict, status_code=201)
-def create_audit(data: AuditCreate, db: Session = Depends(get_company_db)):
+def create_audit(
+    data: AuditCreate,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_company_db)
+):
     site = db.query(Site).filter(Site.id == data.site_id).first()
     if not site:
-        raise HTTPException(400, "Invalid site_id")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid site_id")
 
     audit = Audit(
         title=data.title,
@@ -51,8 +57,17 @@ def create_audit(data: AuditCreate, db: Session = Depends(get_company_db)):
 
 # -------------------- LIST AUDITS --------------------
 @router.get("/list", response_model=List[AuditOut])
-def list_audits(db: Session = Depends(get_company_db)):
-    rows = db.query(Audit).order_by(Audit.id.desc()).all()
+def list_audits(
+    db: Session = Depends(get_company_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = db.query(Audit)
+
+    if current_user.role != "admin":
+        # Filter by assignment
+        query = query.join(AuditTeam).filter(AuditTeam.auditor_id == current_user.id)
+
+    rows = query.order_by(Audit.id.desc()).all()
     audits = []
 
     for a in rows:
@@ -76,10 +91,23 @@ def list_audits(db: Session = Depends(get_company_db)):
 
 # -------------------- AUDIT DETAIL --------------------
 @router.get("/detail/{audit_id}", response_model=Dict)
-def audit_detail(audit_id: int, db: Session = Depends(get_company_db)):
+def audit_detail(
+    audit_id: int,
+    db: Session = Depends(get_company_db),
+    current_user: User = Depends(get_current_user)
+):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(404, "Audit not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Audit not found")
+
+    if current_user.role != "admin":
+        # Check assignment
+        assigned = db.query(AuditTeam).filter(
+            AuditTeam.audit_id == audit_id,
+            AuditTeam.auditor_id == current_user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Audit not found")  # 🔒 Hide existence
 
     site = db.query(Site).filter(Site.id == audit.site_id).first()
 
@@ -116,10 +144,15 @@ def audit_detail(audit_id: int, db: Session = Depends(get_company_db)):
 
 # -------------------- UPDATE AUDIT --------------------
 @router.patch("/{audit_id}", response_model=Dict)
-def update_audit(audit_id: int, data: AuditUpdate, db: Session = Depends(get_company_db)):
+def update_audit(
+    audit_id: int,
+    data: AuditUpdate,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_company_db)
+):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(404, "Audit not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Audit not found")
 
     for k, v in data.dict(exclude_unset=True).items():
         setattr(audit, k, v)
@@ -130,13 +163,17 @@ def update_audit(audit_id: int, data: AuditUpdate, db: Session = Depends(get_com
 
 # -------------------- DELETE AUDIT (SAFE) --------------------
 @router.delete("/{audit_id}")
-def delete_audit(audit_id: int, db: Session = Depends(get_company_db)):
+def delete_audit(
+    audit_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_company_db)
+):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(404, "Audit not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Audit not found")
 
     if db.query(Finding).filter(Finding.audit_id == audit_id).count() > 0:
-        raise HTTPException(400, "Cannot delete audit with findings")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete audit with findings")
 
     db.query(AuditTeam).filter(AuditTeam.audit_id == audit_id).delete()
     db.delete(audit)
@@ -147,8 +184,15 @@ def delete_audit(audit_id: int, db: Session = Depends(get_company_db)):
 
 # -------------------- AVAILABLE AUDITORS --------------------
 @router.get("/available-auditors")
-def available_auditors(db: Session = Depends(get_master_db)):
-    users = db.query(User).filter(User.role.in_(["admin", "auditor"])).all()
+def available_auditors(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_master_db)
+):
+    # 🔒 Only return auditors from current user's company
+    users = db.query(User).filter(
+        User.company_id == current_user.company_id,
+        User.role.in_(["admin", "auditor"])
+    ).all()
     return [
         {"id": u.id, "name": u.name, "email": u.email, "role": u.role}
         for u in users
@@ -160,16 +204,24 @@ def available_auditors(db: Session = Depends(get_master_db)):
 def update_audit_team(
     audit_id: int,
     auditor_ids: List[int],
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_company_db),
     master_db: Session = Depends(get_master_db),
 ):
     audit = db.query(Audit).filter(Audit.id == audit_id).first()
     if not audit:
-        raise HTTPException(404, "Audit not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Audit not found")
 
+    # 🔒 Deduplicate input to prevent duplicate assignments
+    auditor_ids = list(set(auditor_ids))
+
+    # 🔒 Validate each auditor exists AND belongs to same company
     for uid in auditor_ids:
-        if not master_db.query(User).filter(User.id == uid).first():
-            raise HTTPException(400, f"Invalid auditor_id {uid}")
+        user = master_db.query(User).filter(User.id == uid).first()
+        if not user:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid auditor_id {uid}")
+        if user.company_id != admin.company_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, f"Auditor {uid} belongs to different company")
 
     db.execute(delete(AuditTeam).where(AuditTeam.audit_id == audit_id))
 
