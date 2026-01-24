@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 from app.db.db_session import get_company_engine
-from app.core.auth import get_current_user
+from app.core.dependencies import get_current_user
 from app.db.auto_migrate import migrate_company_db
 from fastapi import Depends
 
