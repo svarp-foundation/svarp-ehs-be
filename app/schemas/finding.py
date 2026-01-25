@@ -11,6 +11,7 @@ class FindingCreate(BaseModel):
     likelihood: int = Field(..., ge=1, le=5)
     severity: int = Field(..., ge=1, le=5)
     area: Optional[str] = None
+    assigned_to_id: Optional[int] = None # Added
 
     model_config = {
         "validate_by_name": True
@@ -24,6 +25,8 @@ class FindingUpdate(BaseModel):
     likelihood: Optional[int] = Field(None, ge=1, le=5)
     severity: Optional[int] = Field(None, ge=1, le=5)
     area: Optional[str] = None
+    status: Optional[str] = None # Added
+    assigned_to_id: Optional[int] = None # Added
 
     model_config = {
         "validate_by_name": True
@@ -34,6 +37,7 @@ class FindingOut(BaseModel):
     id: int
     audit_id: int
     audit_title: Optional[str] = None
+    audit_status: Optional[str] = None  # New field
     category: str
     type: str
     description: str
@@ -41,6 +45,9 @@ class FindingOut(BaseModel):
     severity: int
     risk_score: int
     area: Optional[str] = None
+    status: Optional[str] = None # Added
+    assigned_to_id: Optional[int] = None # Added
+    assigned_name: Optional[str] = None # Added for convenience
     created_at: Optional[datetime] = None
 
     model_config = {

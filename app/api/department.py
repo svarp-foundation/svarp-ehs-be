@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.schemas.department import DepartmentCreate
+from app.schemas.department import DepartmentCreate, DepartmentResponse
 from app.models.company_db.department import Department
 from app.db.company_session import get_company_db
 from app.models.company_db.site import Site
@@ -22,6 +22,14 @@ def create_department(
     if not site:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid site_id: Site does not exist")
 
+    # Check for duplicate name in same site
+    existing = db.query(Department).filter(
+        Department.site_id == data.site_id,
+        Department.name == data.name
+    ).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Department with this name already exists in this site")
+
     new_dep = Department(
         name=data.name,
         site_id=data.site_id
@@ -31,11 +39,27 @@ def create_department(
     db.commit()
     db.refresh(new_dep)
 
-    return {"message": "Department created", "id": new_dep.id}
+    return new_dep
 
-@router.get("/all")
+@router.get("/all", response_model=list[DepartmentResponse])
 def get_departments(db: Session = Depends(get_company_db)):
-    return db.query(Department).all()
+    deps = db.query(Department).all()
+    
+    # Check for findings usage
+    # Ideally we'd do a join/count query, but for now simple loop is fine given department count is usually low
+    from app.models.company_db.finding import Finding
+    
+    results = []
+    for d in deps:
+        has_findings = db.query(Finding).filter(Finding.area == d.name).count() > 0
+        results.append(DepartmentResponse(
+            id=d.id, 
+            name=d.name, 
+            site_id=d.site_id, 
+            has_findings=has_findings
+        ))
+        
+    return results
 
 
 @router.delete("/{dep_id}")

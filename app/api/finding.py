@@ -11,6 +11,7 @@ from app.schemas.finding import FindingCreate, FindingOut, FindingUpdate
 from app.core.dependencies import get_current_user
 from app.core.permissions import require_admin, check_audit_access
 from app.models.user import User
+from app.db.master import SessionLocal
 
 router = APIRouter(prefix="/finding", tags=["Findings"], dependencies=[Depends(get_current_user)])
 
@@ -24,14 +25,27 @@ ALLOWED_TYPES = {"NC", "Observation", "OFI", "Good Practice"}
 @router.post("/create", status_code=status.HTTP_201_CREATED, response_model=Dict)
 def create_finding(
     payload: FindingCreate,
-    _: User = Depends(require_admin),  # 🔒 Admin only
+    admin: User = Depends(require_admin),  # 🔒 Admin only
     db: Session = Depends(get_company_db)
 ):
-
     # Validate referenced audit exists
     audit = db.query(Audit).filter(Audit.id == payload.audit_id).first()
     if not audit:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid audit_id: audit does not exist")
+
+    # 🔒 LOCKED CHECK
+    if audit.status == "locked":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot add findings to a locked audit")
+
+    # Validate assignee if provided
+    if payload.assigned_to_id:
+        master = SessionLocal()
+        user = master.query(User).filter(User.id == payload.assigned_to_id).first()
+        master.close()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assigned_to_id")
+        if user.company_id != admin.company_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assignee must be from same company")
 
     # Validate finding type
     if payload.finding_type not in ALLOWED_TYPES:
@@ -51,7 +65,9 @@ def create_finding(
         likelihood=payload.likelihood,
         severity=payload.severity,
         risk_score=risk_score,
-        area=payload.area
+        area=payload.area,
+        assigned_to_id=payload.assigned_to_id,
+        status="open"
     )
 
     db.add(new)
@@ -106,12 +122,25 @@ def list_findings(
     rows = query.order_by(Finding.id.desc()).limit(limit).offset(offset).all()
 
     result = []
+    
+    # Pre-fetch user map for efficiency
+    assignee_ids = {r.assigned_to_id for r in rows if r.assigned_to_id}
+    user_map = {}
+    if assignee_ids:
+        pass # Fetching users from master DB for each request might be slow if many findings. 
+             # But let's do it simply: one query for all IDs.
+        master = SessionLocal()
+        users = master.query(User).filter(User.id.in_(assignee_ids)).all()
+        user_map = {u.id: u.name for u in users}
+        master.close()
+
     for r in rows:
         audit = db.query(Audit).filter(Audit.id == r.audit_id).first()
         result.append({
             "id": r.id,
             "audit_id": r.audit_id,
             "audit_title": audit.title if audit else None,
+            "audit_status": audit.status if audit else None,
             "category": r.category,
             "type": r.type,
             "description": r.description,
@@ -119,6 +148,9 @@ def list_findings(
             "severity": r.severity,
             "risk_score": r.risk_score,
             "area": r.area,
+            "status": r.status,
+            "assigned_to_id": r.assigned_to_id,
+            "assigned_name": user_map.get(r.assigned_to_id),
             "created_at": r.created_at.isoformat() if getattr(r, "created_at", None) else None
         })
 
@@ -149,6 +181,7 @@ def get_finding(
         "id": f.id,
         "audit_id": f.audit_id,
         "audit_title": audit.title if audit else None,
+        "audit_status": audit.status if audit else None,
         "category": f.category,
         "type": f.type,
         "description": f.description,
@@ -187,6 +220,7 @@ def get_findings_by_audit(
             "id": r.id,
             "audit_id": r.audit_id,
             "audit_title": audit.title,
+            "audit_status": audit.status,
             "category": r.category,
             "type": r.type,
             "description": r.description,
@@ -207,12 +241,17 @@ def get_findings_by_audit(
 def update_finding(
     id: int,
     payload: FindingUpdate,
-    _: User = Depends(require_admin),  # 🔒 Admin only
+    admin: User = Depends(require_admin),  # 🔒 Admin only
     db: Session = Depends(get_company_db)
 ):
     f = db.query(Finding).filter(Finding.id == id).first()
     if not f:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
+
+    # 🔒 LOCKED CHECK
+    audit = db.query(Audit).filter(Audit.id == f.audit_id).first()
+    if audit and audit.status == "locked":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot edit findings of a locked audit")
 
     # Validate & update
     if payload.finding_type:
@@ -237,6 +276,23 @@ def update_finding(
 
     f.risk_score = int(f.likelihood) * int(f.severity)
 
+    # Status updates
+    if payload.status:
+        f.status = payload.status
+        
+    # Assignment updates
+    if payload.assigned_to_id is not None:
+        master = SessionLocal()
+        user = master.query(User).filter(User.id == payload.assigned_to_id).first()
+        master.close()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assigned_to_id")
+        
+        if user.company_id != admin.company_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assignee must be from same company")
+            
+        f.assigned_to_id = payload.assigned_to_id
+
     db.commit()
     db.refresh(f)
 
@@ -255,6 +311,11 @@ def delete_finding(
     f = db.query(Finding).filter(Finding.id == id).first()
     if not f:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
+
+    # 🔒 LOCKED CHECK
+    audit = db.query(Audit).filter(Audit.id == f.audit_id).first()
+    if audit and audit.status == "locked":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete findings of a locked audit")
 
     db.delete(f)
     db.commit()

@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from app.db.db_session import get_company_engine
 from app.db.base_class import Base
 
@@ -8,6 +8,7 @@ from app.models.company_db.department import Department
 from app.models.company_db.audit import Audit
 from app.models.company_db.audit_team import AuditTeam
 from app.models.company_db.finding import Finding
+from app.models.company_db.audit_log import AuditLog
 
 def migrate_company_db(company_id: int):
     db_path = f"tmp/ehs_db/company_{company_id}.db"
@@ -31,4 +32,24 @@ def migrate_company_db(company_id: int):
         Base.metadata.create_all(bind=engine)
         print("[MIGRATION] Migration complete.")
     else:
-        print(f"[MIGRATION] No missing tables for company {company_id}. DB is up-to-date.")
+        # Check for schema updates (e.g. new columns)
+        # Simple manual migration for 'is_active' on 'sites'
+        if "sites" in existing_tables:
+            columns = [c["name"] for c in inspector.get_columns("sites")]
+            if "is_active" not in columns:
+                print(f"[MIGRATION] Adding 'is_active' column to sites for company {company_id}")
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE sites ADD COLUMN is_active INTEGER DEFAULT 1"))
+                    conn.execute(text("ALTER TABLE sites ADD COLUMN is_active INTEGER DEFAULT 1"))
+                    conn.commit()
+        
+        if "findings" in existing_tables:
+            columns = [c["name"] for c in inspector.get_columns("findings")]
+            if "status" not in columns:
+                print(f"[MIGRATION] Adding 'status' and 'assigned_to_id' to findings for company {company_id}")
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE findings ADD COLUMN status VARCHAR DEFAULT 'open'"))
+                    conn.execute(text("ALTER TABLE findings ADD COLUMN assigned_to_id INTEGER"))
+                    conn.commit()
+
+        print(f"[MIGRATION] DB Check complete for company {company_id}.")

@@ -18,3 +18,6 @@ class Finding(Base):
 
     area = Column(String, nullable=True)
     evidence = Column(String, nullable=True)  # store file path later
+
+    status = Column(String, default="open") # open, in_progress, closed
+    assigned_to_id = Column(Integer, nullable=True) # User ID from master DB
