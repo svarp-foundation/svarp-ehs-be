@@ -70,6 +70,7 @@ build/
 .coverage
 coverage.xml
 .pytest_cache/
+tests/
 
 # -------------------------
 # Uploads (user evidence/photos)
