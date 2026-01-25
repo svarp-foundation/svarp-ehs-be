@@ -5,7 +5,7 @@ from app.models.user import User
 from app.db.master import SessionLocal
 from sqlalchemy.orm import Session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 def get_master_db():
     db = SessionLocal()
