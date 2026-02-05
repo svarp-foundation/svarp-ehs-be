@@ -1,10 +1,15 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-MASTER_DB_PATH = "tmp/ehs_db/master.db"
+from app.core.config import settings
+import os
+
+# Ensure the database directory exists
+if not os.path.exists(settings.DATABASE_DIR):
+    os.makedirs(settings.DATABASE_DIR)
 
 engine = create_engine(
-    f"sqlite:///{MASTER_DB_PATH}",
+    settings.MASTER_DATABASE_URL,
     connect_args={"check_same_thread": False}
 )
 

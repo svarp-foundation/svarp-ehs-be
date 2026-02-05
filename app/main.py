@@ -13,7 +13,7 @@ from app.api.finding import router as finding_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.dashboard import router as dashboard_router
 
-app = FastAPI(title="SVARP Backend")
+app = FastAPI(title="SVARP EHS BACKEND")
 app.include_router(company_router)
 app.include_router(user_router)
 app.include_router(auth_router)
@@ -36,4 +36,4 @@ Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def root():
-    return {"message": "SVARP Backend Running"}
+    return {"message": "SVARP EHS Backend Running"}

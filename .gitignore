@@ -72,6 +72,8 @@ coverage.xml
 .pytest_cache/
 tests/
 
+db/*.db
+
 # -------------------------
 # Uploads (user evidence/photos)
 # -------------------------

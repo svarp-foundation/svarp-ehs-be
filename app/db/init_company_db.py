@@ -6,11 +6,15 @@ from app.models.company_db.department import Department
 from app.models.company_db.audit import Audit
 from app.models.company_db.audit_team import AuditTeam
 
-def create_company_database(company_id: int):
-    db_path = f"tmp/ehs_db/company_{company_id}.db"
+from app.core.config import settings
 
-    if not os.path.exists("db"):
-        os.makedirs("db")
+def create_company_database(company_id: int):
+    db_path = settings.get_company_db_path(company_id)
+    
+    # Ensure directory exists
+    dir_name = os.path.dirname(db_path)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
 
     engine = get_company_engine(db_path)
     Base.metadata.create_all(bind=engine)

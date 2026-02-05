@@ -16,6 +16,7 @@ pyasn1==0.6.1
 pycparser==2.23
 pydantic==2.12.5
 pydantic_core==2.41.5
+pydantic-settings
 python-dotenv==1.2.1
 python-jose==3.5.0
 PyYAML==6.0.3

@@ -20,8 +20,12 @@ FastAPI backend for the SVARP EHS Platform, utilizing a multi-tenant architectur
    ```bash
    pip install -r requirements.txt
    ```
+   ```
+2. **Configuration**:
+   - Create a `.env` file in the `backend` directory.
+   - Add `DATABASE_DIR=tmp/ehs_db`.
 
-2. **Run Server**:
+3. **Run Server**:
    ```bash
    uvicorn app.main:app --reload
    ```

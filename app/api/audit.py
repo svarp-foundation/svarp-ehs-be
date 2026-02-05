@@ -84,7 +84,7 @@ def list_audits(
 
     if current_user.role != "admin":
         # Filter by assignment
-        query = query.join(AuditTeam).filter(AuditTeam.auditor_id == current_user.id)
+        query = query.join(AuditTeam, Audit.id == AuditTeam.audit_id).filter(AuditTeam.auditor_id == current_user.id)
 
     rows = query.order_by(Audit.id.desc()).all()
     audits = []

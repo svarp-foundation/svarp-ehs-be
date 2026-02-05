@@ -1,12 +1,12 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from app.db.base_class import Base
 
 class User(Base):
-    __tablename__ = "master_users"
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer)
     name = Column(String)
     email = Column(String, unique=True, index=True)
-    password = Column(String)  # hashed
-    role = Column(String)      # admin / auditor / etc
+    password = Column(String)
+    role = Column(String)
+    company_id = Column(Integer, ForeignKey("companies.id"))
