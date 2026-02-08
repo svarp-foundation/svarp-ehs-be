@@ -42,7 +42,7 @@ def dashboard_stats(
     # But usually dashboard also shows context. 
     # Let's stick to plan: Admin = Global, Auditor = Assigned Only for ACTIONABLE items.
     # Sites/Depts are global context, so Auditor sees total count usually.
-    stats["sites"] = db.query(Site).count()
+    stats["sites"] = db.query(Site).filter(Site.is_active == 1).count()
     stats["departments"] = db.query(Department).count()
 
     # 3. Role Filtering
